@@ -2,6 +2,7 @@ import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -10,9 +11,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.runBlocking
 import javax.swing.JFileChooser
 
 @Composable
@@ -24,18 +28,21 @@ fun App() {
     }
 }
 
+
 @Composable
 fun ChooseView() {
     var excelPath by remember { mutableStateOf("excel文件地址") }
     var xmlFilesPath by remember { mutableStateOf("文件夹地址") }
-    val logInfo: MutableState<String> = mutableStateOf("")
+    var logInfo by remember { mutableStateOf("") }
+    val logShareFlow = MutableStateFlow("")
+//    val logInfo: MutableState<String> = mutableStateOf("")
 
-
-    Column(
+    LazyColumn(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 30.dp)
+            .padding(top = 30.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Button(onClick = {
@@ -88,7 +95,16 @@ fun ChooseView() {
         Spacer(Modifier.size(20.dp))
         Button(onClick = {
             try {
-                ParseUtils.excel2Xml(excelPath, xmlFilesPath, logInfo)
+                runBlocking {
+                    ParseUtils.excel2Xml(excelPath, xmlFilesPath, logShareFlow)
+
+                    logInfo = logShareFlow.collectAsState().value
+                    println(logShareFlow.collectAsState().value)
+                    logShareFlow.collect {
+                        println("---->$it")
+                        logInfo = it
+                    }
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
                 println(e.message)
@@ -97,11 +113,18 @@ fun ChooseView() {
             Text("开始转化")
         }
         Spacer(Modifier.size(20.dp))
-        Column {
-            Text(text = logInfo.value)
+        Column(modifier = Modifier.size(width = 400.dp, height = Dp.Unspecified)) {
+            Text(
+                text = logInfo,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .border(BorderStroke(1.dp, Color.Blue), RoundedCornerShape(8.dp))
+                    .padding(4.dp),
+            )
         }
-    }
+        Spacer(Modifier.size(40.dp))
 
+    }
 }
 
 @Composable

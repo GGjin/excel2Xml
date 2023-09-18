@@ -1,7 +1,4 @@
-import androidx.compose.runtime.MutableState
-import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.channels.SendChannel
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
 import org.apache.poi.ss.usermodel.Sheet
 import org.apache.poi.ss.usermodel.WorkbookFactory
 import org.jdom2.Document
@@ -26,7 +23,7 @@ object ParseUtils {
     private lateinit var valuesXml: Element
 
     @Throws
-    fun excel2Xml(excelPath: String, xmlFilesPath: String, logInfo: MutableState<String>) {
+    suspend fun excel2Xml(excelPath: String, xmlFilesPath: String, logInfoFlow: MutableStateFlow<String>) {
 
         // 读取 Excel 文件
         val file = File(excelPath)
@@ -98,7 +95,7 @@ object ParseUtils {
                                 .replace(Regex("[^a-zA-Z0-9_]"), "_")
                                 .lowercase(Locale.getDefault())
                             it.setAttribute("name", addNameAttribute(name, valuesXml.children))
-                            logInfo.value = logInfo.value + "\n" + "${name}----->${it.text}"
+//                            logInfoFlow.emit("${name}----->${it.text}" + "\n")
                             valuesXml.addContent(it)
                         }
                     }
@@ -129,13 +126,14 @@ object ParseUtils {
                 val outputter = XMLOutputter(Format.getPrettyFormat())
                 outputter.output(xmlElement, FileWriter(xmlFile))
                 println("${parentFile.name}-->保存完成")
-                logInfo.value = logInfo.value + "\n" + "${parentFile.name}-->保存完成"
+                logInfoFlow.emit("${parentFile.name}-->保存完成" + "\n")
             }
         }
 
         // 关闭工作簿和输入流
         workbook.close()
         inputStream.close()
+        logInfoFlow.emit("end")
     }
 
     private fun addNameAttribute(name: String, elements: List<Element>): String {
