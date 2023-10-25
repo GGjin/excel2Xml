@@ -1,5 +1,4 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-
 plugins {
     kotlin("jvm")
     id("org.jetbrains.compose")
@@ -15,7 +14,6 @@ repositories {
     maven("https://jitpack.io")
     google()
 }
-
 dependencies {
     // Note, if you develop a library, you should use compose.desktop.common.
     // compose.desktop.currentOs should be used in launcher-sourceSet
@@ -31,7 +29,11 @@ dependencies {
     implementation("org.jdom:jdom2:2.0.6")
 
 }
-
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile::class){
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+}
 compose.desktop {
     application {
         mainClass = "MainKt"
