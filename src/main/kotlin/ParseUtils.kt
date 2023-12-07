@@ -1,4 +1,6 @@
 import kotlinx.coroutines.flow.MutableStateFlow
+import org.apache.poi.ss.usermodel.Cell
+import org.apache.poi.ss.usermodel.Row
 import org.apache.poi.ss.usermodel.Sheet
 import org.apache.poi.ss.usermodel.WorkbookFactory
 import org.jdom2.Document
@@ -19,7 +21,6 @@ import java.util.*
  */
 object ParseUtils {
 
-
     private lateinit var valuesXml: Element
 
     @Throws
@@ -35,24 +36,21 @@ object ParseUtils {
         val directory = File(xmlFilesPath)
         val subdirectories = listSubdirectories(directory)
 
-
         val xmlMap = mutableMapOf<File, Element>()
         val documentMap = mutableMapOf<File, Document>()
 
         val reader = SAXBuilder()
         for (subdirectory in subdirectories) {
             val stringsXMl = File(subdirectory, "strings.xml")
-            if (!stringsXMl.exists())
-                continue
+            if(!stringsXMl.exists()) continue
             val document = reader.build(stringsXMl)
             val root: Element = document.rootElement
             xmlMap[subdirectory] = root
             documentMap[subdirectory] = document
-            if (subdirectory.name == "values") {
+            if(subdirectory.name == "values") {
                 valuesXml = root
             }
         }
-
 
         // 读取第一个工作表
         val sheet: Sheet = workbook.getSheetAt(0)
@@ -60,42 +58,43 @@ object ParseUtils {
         val map = mutableMapOf<String, Int>()
         var enIndex = -1
 
-        if (::valuesXml.isInitialized) {
+        if(::valuesXml.isInitialized) {
             var tempStr = ""
-
+            var valuesIndex: Int = -1
+            var element: Element? = null
+            var enValue: Cell
             sheet.forEachIndexed { rowIndex, row ->
-                if (rowIndex == 0) {
+                if(rowIndex == 0) {
                     row.forEachIndexed { index, cell ->
 //                    println("$index----" + cell.stringCellValue)
                         map[cell.stringCellValue] = index
-                        if (cell.stringCellValue.equals("values-en")) {
+                        if(cell.stringCellValue.equals("values-en")) {
                             enIndex = index
                         }
                     }
                 } else {
-                    val enValue = row.getCell(enIndex)
+                    enValue = row.getCell(enIndex)
 
-                    var valuesIndex: Int = -1
-                    var element: Element? = null
                     tempStr = enValue.stringCellValue.trim().replace("'", "\\'")
+                    if(tempStr.isEmpty())
+                        return@forEachIndexed
                     valuesXml.children.forEachIndexed eachIndex@{ i, e ->
-                        if (e.text == tempStr) {
+                        if(e.text == tempStr) {
                             valuesIndex = i
                             element = e
-//                            println("$valuesIndex---->$element")
+//                            println("$valuesIndex---->${element?.text}")
                             return@eachIndex
                         }
                     }
 
-                    if (element == null) {
+                    if(element == null) {
                         element = Element("string")
                         element?.let {
                             it.text = tempStr
-                            val name = tempStr
-                                .replace(Regex("[^a-zA-Z0-9_]"), "_")
-                                .lowercase(Locale.getDefault())
-                            it.setAttribute("name", addNameAttribute(name, valuesXml.children))
+                            val name = getElementName(row, valuesIndex, tempStr)
+                            it.setAttribute("name", name)
 //                            logInfoFlow.emit("${name}----->${it.text}" + "\n")
+//                            println(name)
                             valuesXml.addContent(it)
                         }
                     }
@@ -105,9 +104,10 @@ object ParseUtils {
                             val cell = row.getCell(it)
                             val value = cell.stringCellValue.replace("'", "\\'")
                             val name = element?.getAttributeValue("name")
-                            if (xmlElement.children.firstOrNull { item -> item.getAttributeValue("name") == name } == null) {
+                            if(xmlElement.children.firstOrNull { item -> item.getAttributeValue("name") == name } == null) {
                                 val newElement = Element("string")
                                 newElement.text = value
+
                                 newElement.setAttribute("name", name)
                                 xmlElement.addContent(newElement)
                             }
@@ -121,23 +121,35 @@ object ParseUtils {
         xmlMap.forEach { (parentFile, xmlElement) ->
             // 将更改保存回 XML 文件
             val xmlFile = File(parentFile, "strings.xml")
-            if (xmlFile.exists()) {
+            if(xmlFile.exists()) {
                 // 保存修改后的 XML 文件
                 val outputter = XMLOutputter(Format.getPrettyFormat())
                 outputter.output(xmlElement, FileWriter(xmlFile))
                 println("${parentFile.name}-->保存完成")
-                logInfoFlow.emit("${parentFile.name}-->保存完成" + "\n")
+//                logInfoFlow.emit("${parentFile.name}-->保存完成" + "\n")
             }
         }
-
         // 关闭工作簿和输入流
         workbook.close()
         inputStream.close()
         logInfoFlow.emit("end")
     }
 
+    private fun getElementName(row: Row, valuesIndex: Int, tempStr: String): String {
+        val id = row.getCell(0).stringCellValue
+        if(id.isNotEmpty()) {
+            return id
+        }
+        if(valuesIndex != -1)
+            return valuesXml.children.getOrNull(valuesIndex)?.text ?: addNameAttribute(
+                tempStr.replace(Regex("[^a-zA-Z0-9_]"), "_").lowercase(Locale.getDefault()),
+                valuesXml.children
+            )
+        return ""
+    }
+
     private fun addNameAttribute(name: String, elements: List<Element>): String {
-        if (elements.firstOrNull { it.getAttributeValue("name") == name } == null) {
+        if(elements.firstOrNull { it.getAttributeValue("name") == name } == null) {
             return name
         } else {
             return addNameAttribute(name + "_other", elements)
@@ -152,7 +164,7 @@ object ParseUtils {
 
         // 遍历所有文件和文件夹
         for (file in files) {
-            if (file.isDirectory) {
+            if(file.isDirectory) {
                 // 如果是文件夹，将其添加到返回列表中，并递归获取其子文件夹
                 subdirectories.add(file)
                 subdirectories.addAll(listSubdirectories(file))
