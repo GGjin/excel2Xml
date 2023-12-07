@@ -40,3 +40,5 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+.idea/runConfigurations/excel2Xml__run_.xml
+.idea/git_toolbox_prj.xml
