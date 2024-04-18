@@ -1,79 +1,63 @@
-import androidx.compose.desktop.ui.tooling.preview.Preview
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Button
-import androidx.compose.material.Card
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.awt.ComposeWindow
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
-import kotlinx.coroutines.runBlocking
-import javax.swing.JFileChooser
+import androidx.compose.desktop.ui.tooling.preview.*
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.*
+import androidx.compose.material.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.*
+import androidx.compose.ui.awt.*
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.unit.*
+import androidx.compose.ui.window.*
+import kotlinx.coroutines.*
+import javax.swing.*
 
 @Composable
 @Preview
 fun App() {
-
     MaterialTheme {
 
-        var excelPath by remember { mutableStateOf("excel文件地址") }
-        var xmlFilesPath by remember { mutableStateOf("文件夹地址") }
+        var logInfo by remember { mutableStateOf("") }
 
-        ChooseView(excelPath, excelPathCallBack = { path ->
-            excelPath = path
-        }, xmlFilesPath, xmlFilesPathCallBack = {
-            xmlFilesPath = it
-        }, modifier = Modifier
-            .background(Color.Blue)
+        ChooseView(
+            startClick = { excelPath, xmlFilesPath ->
+                try {
+                    runBlocking {
+                        ParseUtils.excel2Xml(excelPath, xmlFilesPath) {
+                            logInfo = buildString {
+                                append(logInfo)
+                                append(it)
+                                append("\n")
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    println(e.message)
+                }
+            }, logInfo, modifier = Modifier
         )
     }
 }
 
 @Composable
 fun ChooseView(
-    excelPath: String, excelPathCallBack: ((String) -> Unit)? = null, xmlFilesPath: String, xmlFilesPathCallBack: ((String) -> Unit)? = null, modifier: Modifier = Modifier
+    startClick: ((String, String) -> Unit)? = null, logInfo: String, modifier: Modifier = Modifier
 ) {
-
-    var logInfo by remember { mutableStateOf("") }
-    val logList by lazy { mutableListOf<String>() }
+    var excelPath by remember { mutableStateOf("excel文件地址") }
+    var xmlFilesPath by remember { mutableStateOf("文件夹地址") }
     Column(
-        horizontalAlignment = Alignment.Start,
-        modifier = modifier.padding(20.dp)
-            .background(Color.Red),
+        horizontalAlignment = Alignment.Start, modifier = modifier.padding(20.dp).fillMaxSize()
     ) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = modifier
+            verticalAlignment = Alignment.CenterVertically, modifier = modifier
         ) {
             Button(onClick = {
                 try {
                     JFileChooser().apply {
                         fileSelectionMode = JFileChooser.FILES_ONLY
                         if (showOpenDialog(ComposeWindow()) == JFileChooser.APPROVE_OPTION) {
-                            excelPathCallBack?.invoke(selectedFile.absolutePath)
+                            excelPath = selectedFile.absolutePath
                         }
                     }
                     // Place definition above class declaration to make field static
@@ -86,7 +70,7 @@ fun ChooseView(
             }
             Spacer(Modifier.size(20.dp))
             RoundedBorderText(
-                text = excelPath, borderColor = Color.Blue, backgroundColor = Color.White, modifier = Modifier.align(Alignment.CenterVertically).padding(start = 20.dp, end = 20.dp).sizeIn(minWidth = 100.dp)
+                text = excelPath, borderColor = Color.Blue, backgroundColor = Color.White, modifier = Modifier.align(Alignment.CenterVertically).fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 10.dp).sizeIn(minWidth = 100.dp)
             )
         }
         Spacer(Modifier.size(10.dp))
@@ -96,7 +80,7 @@ fun ChooseView(
                 JFileChooser().apply {
                     fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
                     if (showOpenDialog(ComposeWindow()) == JFileChooser.APPROVE_OPTION) {
-                        xmlFilesPathCallBack?.invoke(selectedFile.absolutePath)
+                        xmlFilesPath = selectedFile.absolutePath
                     }
                 }
                 // Place definition above class declaration to make field static
@@ -106,44 +90,29 @@ fun ChooseView(
             }
             Spacer(Modifier.size(20.dp))
             RoundedBorderText(
-                text = xmlFilesPath, borderColor = Color.Blue, backgroundColor = Color.White, modifier = Modifier.align(Alignment.CenterVertically).padding(start = 20.dp, end = 20.dp).sizeIn(minWidth = 100.dp)
+                text = xmlFilesPath, borderColor = Color.Blue, backgroundColor = Color.White, modifier = Modifier.align(Alignment.CenterVertically).fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 10.dp).sizeIn(minWidth = 100.dp)
             )
         }
         Spacer(Modifier.size(20.dp))
         Button(
             onClick = {
-                try {
-                    runBlocking {
-                        ParseUtils.excel2Xml(excelPath, xmlFilesPath) {
-                            logInfo = it
-                            logList.add(it)
-                        }
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    println(e.message)
-                }
+                startClick?.invoke(excelPath, xmlFilesPath)
             },
-            modifier = modifier.align(Alignment.CenterHorizontally)
         ) {
-            Text("开始转化")
+            Text("开始转化", fontSize = TextUnit(20f, TextUnitType.Sp))
         }
         Spacer(Modifier.size(20.dp))
 
-
         Column(
-            modifier = Modifier
-                .size(width = 400.dp, height = Dp.Unspecified)
+            modifier = Modifier.fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .border(BorderStroke(1.dp, Color.Blue), RoundedCornerShape(8.dp))
         ) {
-            LazyColumn() {
-                items(logList) { log ->
-                    Text(
-                        text = log,
-                        modifier = Modifier.fillMaxSize().padding(4.dp),
-                    )
-                }
-            }
+
+            Text(
+                text = logInfo,
+            )
+
         }
         Spacer(Modifier.size(40.dp))
 
@@ -152,14 +121,14 @@ fun ChooseView(
 
 @Composable
 fun RoundedBorderText(
-    text: String, borderColor: Color, backgroundColor: Color, modifier: Modifier = Modifier
+    text: String, borderColor: Color, backgroundColor: Color, fontSize: TextUnit = TextUnit.Unspecified, modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.padding(10.dp), border = BorderStroke(1.dp, borderColor), shape = RoundedCornerShape(8.dp), backgroundColor = backgroundColor
+        modifier = modifier, border = BorderStroke(1.dp, borderColor), shape = RoundedCornerShape(8.dp), backgroundColor = backgroundColor
     ) {
-        Box(modifier.padding(10.dp)) {
+        Box(modifier) {
             Text(
-                text = text, style = MaterialTheme.typography.body1, color = Color.Black
+                text = text, style = MaterialTheme.typography.body1, color = Color.Black, fontSize = fontSize
             )
         }
     }

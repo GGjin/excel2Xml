@@ -1,16 +1,10 @@
-import org.apache.poi.ss.usermodel.Cell
-import org.apache.poi.ss.usermodel.Row
-import org.apache.poi.ss.usermodel.Sheet
-import org.apache.poi.ss.usermodel.WorkbookFactory
-import org.jdom2.Document
-import org.jdom2.Element
-import org.jdom2.input.SAXBuilder
-import org.jdom2.output.Format
-import org.jdom2.output.XMLOutputter
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileWriter
-import java.util.Locale
+import kotlinx.coroutines.*
+import org.apache.poi.ss.usermodel.*
+import org.jdom2.*
+import org.jdom2.input.*
+import org.jdom2.output.*
+import java.io.*
+import java.util.*
 
 /**
  * Filename: ParseUtils
@@ -29,7 +23,9 @@ object ParseUtils {
         val file = File(excelPath)
         // Place definition above class declaration to make field static
 
-        val inputStream = FileInputStream(file)
+        val inputStream = withContext(Dispatchers.IO) {
+            FileInputStream(file)
+        }
         val workbook = WorkbookFactory.create(inputStream)
 
         val directory = File(xmlFilesPath)
@@ -74,7 +70,7 @@ object ParseUtils {
                 } else {
                     enValue = row.getCell(enIndex)
 
-                    tempStr = enValue.stringCellValue.trim().replace("'", "\\'")
+                    tempStr = enValue.stringCellValue.replace("'", "\\'")
                     if (tempStr.isEmpty())
                         return@forEachIndexed
                     valuesXml.children.forEachIndexed eachIndex@{ i, e ->
@@ -123,7 +119,7 @@ object ParseUtils {
                 // 保存修改后的 XML 文件
                 val outputter = XMLOutputter(Format.getPrettyFormat())
                 outputter.output(xmlElement, FileWriter(xmlFile))
-                println("${parentFile.name}-->保存完成")
+//                println("${parentFile.name}-->保存完成")
                 logCallback?.invoke("${parentFile.name}-->保存完成")
             }
         }
