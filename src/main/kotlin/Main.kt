@@ -33,6 +33,11 @@ fun App() {
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
+                    logInfo = buildString {
+                        append(logInfo)
+                        append(e.message)
+                        append("\n")
+                    }
                     println(e.message)
                 }
             }, logInfo, modifier = Modifier

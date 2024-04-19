@@ -97,7 +97,7 @@ object ParseUtils {
                     xmlMap.forEach { (file, xmlElement) ->
                         map[file.name]?.let {
                             val cell = row.getCell(it)
-                            val value = cell.stringCellValue.replace("'", "\\'")
+                            val value = cell?.stringCellValue?.replace("'", "\\'")
                             val name = element?.getAttributeValue("name")
                             if (xmlElement.children.firstOrNull { item -> item.getAttributeValue("name") == name } == null) {
                                 val newElement = Element("string")
