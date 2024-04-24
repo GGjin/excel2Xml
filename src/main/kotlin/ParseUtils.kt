@@ -57,7 +57,7 @@ object ParseUtils {
             var tempStr = ""
             var valuesIndex: Int = -1
             var element: Element? = null
-            var enValue: Cell
+            var enValue: Cell?
             sheet.forEachIndexed { rowIndex, row ->
                 if (rowIndex == 0) {
                     row.forEachIndexed { index, cell ->
@@ -70,9 +70,8 @@ object ParseUtils {
                 } else {
                     enValue = row.getCell(enIndex)
 
-                    tempStr = enValue.stringCellValue.replace("'", "\\'")
-                    if (tempStr.isEmpty())
-                        return@forEachIndexed
+                    tempStr = enValue?.stringCellValue?.replace("'", "\\'") ?: ""
+                    if (tempStr.isEmpty()) return@forEachIndexed
                     valuesXml.children.forEachIndexed eachIndex@{ i, e ->
                         if (e.text == tempStr) {
                             valuesIndex = i
@@ -133,11 +132,9 @@ object ParseUtils {
         if (id.isNotEmpty()) {
             return id
         }
-        if (valuesIndex != -1)
-            return valuesXml.children.getOrNull(valuesIndex)?.text ?: addNameAttribute(
-                tempStr.replace(Regex("[^a-zA-Z0-9_]"), "_").lowercase(Locale.getDefault()),
-                valuesXml.children
-            )
+        if (valuesIndex != -1) return valuesXml.children.getOrNull(valuesIndex)?.text ?: addNameAttribute(
+            tempStr.replace(Regex("[^a-zA-Z0-9_]"), "_").lowercase(Locale.getDefault()), valuesXml.children
+        )
         return ""
     }
 
