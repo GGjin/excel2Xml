@@ -1,10 +1,10 @@
 import kotlinx.coroutines.*
 import org.apache.poi.ss.usermodel.*
 import org.jdom2.*
-import org.jdom2.input.*
+import org.jdom2.input.SAXBuilder
 import org.jdom2.output.*
 import java.io.*
-import java.util.*
+import java.util.Locale
 
 /**
  * Filename: ParseUtils
@@ -69,8 +69,9 @@ object ParseUtils {
                     }
                 } else {
                     enValue = row.getCell(enIndex)
+                    // 使用正则表达式替换字符串中所有 '，但排除 ' 前面有 \\ 的情况
+                    val tempStr = enValue?.stringCellValue?.let { value -> value.replace("(?<!\\\\)'".toRegex(), "\\'") } ?: ""
 
-                    tempStr = enValue?.stringCellValue?.replace("'", "\\'") ?: ""
                     if (tempStr.isEmpty()) return@forEachIndexed
                     valuesXml.children.forEachIndexed eachIndex@{ i, e ->
                         if (e.text == tempStr) {
