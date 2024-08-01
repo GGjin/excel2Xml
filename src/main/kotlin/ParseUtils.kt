@@ -4,7 +4,7 @@ import org.jdom2.*
 import org.jdom2.input.SAXBuilder
 import org.jdom2.output.*
 import java.io.*
-import java.util.Locale
+import java.util.*
 
 /**
  * Filename: ParseUtils
@@ -37,12 +37,12 @@ object ParseUtils {
         val reader = SAXBuilder()
         for (subdirectory in subdirectories) {
             val stringsXMl = File(subdirectory, "strings.xml")
-            if (!stringsXMl.exists()) continue
+            if(!stringsXMl.exists()) continue
             val document = reader.build(stringsXMl)
             val root: Element = document.rootElement
             xmlMap[subdirectory] = root
             documentMap[subdirectory] = document
-            if (subdirectory.name == "values") {
+            if(subdirectory.name == "values") {
                 valuesXml = root
             }
         }
@@ -53,43 +53,38 @@ object ParseUtils {
         val map = mutableMapOf<String, Int>()
         var enIndex = -1
 
-        if (::valuesXml.isInitialized) {
-            var tempStr = ""
+        if(::valuesXml.isInitialized) {
             var valuesIndex: Int = -1
             var element: Element? = null
             var enValue: Cell?
             sheet.forEachIndexed { rowIndex, row ->
-                if (rowIndex == 0) {
+                if(rowIndex == 0) {
                     row.forEachIndexed { index, cell ->
-//                    println("$index----" + cell.stringCellValue)
                         map[cell.stringCellValue] = index
-                        if (cell.stringCellValue.equals("values-en")) {
+                        if(cell.stringCellValue.equals("values-en")) {
                             enIndex = index
                         }
                     }
                 } else {
                     enValue = row.getCell(enIndex)
                     // 使用正则表达式替换字符串中所有 '，但排除 ' 前面有 \\ 的情况
-                    val tempStr = enValue?.stringCellValue?.let { value -> value.replace("(?<!\\\\)'".toRegex(), "\\'") } ?: ""
+                    val tempStr = enValue?.stringCellValue?.replace("(?<!\\\\)'".toRegex(), "\\'") ?: ""
 
-                    if (tempStr.isEmpty()) return@forEachIndexed
+                    if(tempStr.isBlank()) return@forEachIndexed
                     valuesXml.children.forEachIndexed eachIndex@{ i, e ->
-                        if (e.text == tempStr) {
+                        if(e.text.replace(Regex("[^A-Za-z0-9]"), "") == tempStr.replace(Regex("[^A-Za-z0-9]"), "")) {
                             valuesIndex = i
                             element = e
-//                            println("$valuesIndex---->${element?.text}")
                             return@eachIndex
                         }
                     }
 
-                    if (element == null) {
+                    if(element == null) {
                         element = Element("string")
                         element?.let {
                             it.text = tempStr
                             val name = getElementName(row, valuesIndex, tempStr)
                             it.setAttribute("name", name)
-//                            logInfoFlow.emit("${name}----->${it.text}" + "\n")
-//                            println(name)
                             valuesXml.addContent(it)
                         }
                     }
@@ -99,7 +94,7 @@ object ParseUtils {
                             val cell = row.getCell(it)
                             val value = cell?.stringCellValue?.replace("'", "\\'")
                             val name = element?.getAttributeValue("name")
-                            if (xmlElement.children.firstOrNull { item -> item.getAttributeValue("name") == name } == null) {
+                            if(xmlElement.children.firstOrNull { item -> item.getAttributeValue("name") == name } == null) {
                                 val newElement = Element("string")
                                 newElement.text = value
 
@@ -115,32 +110,33 @@ object ParseUtils {
         xmlMap.forEach { (parentFile, xmlElement) ->
             // 将更改保存回 XML 文件
             val xmlFile = File(parentFile, "strings.xml")
-            if (xmlFile.exists()) {
+            if(xmlFile.exists()) {
                 // 保存修改后的 XML 文件
                 val outputter = XMLOutputter(Format.getPrettyFormat())
                 outputter.output(xmlElement, FileWriter(xmlFile))
-//                println("${parentFile.name}-->保存完成")
                 logCallback?.invoke("${parentFile.name}-->保存完成")
             }
         }
         // 关闭工作簿和输入流
         workbook.close()
-        inputStream.close()
+        withContext(Dispatchers.IO) {
+            inputStream.close()
+        }
     }
 
     private fun getElementName(row: Row, valuesIndex: Int, tempStr: String): String {
         val id = row.getCell(0).stringCellValue
-        if (id.isNotEmpty()) {
+        if(id.isNotEmpty()) {
             return id
         }
-        if (valuesIndex != -1) return valuesXml.children.getOrNull(valuesIndex)?.text ?: addNameAttribute(
+        if(valuesIndex != -1) return valuesXml.children.getOrNull(valuesIndex)?.text ?: addNameAttribute(
             tempStr.replace(Regex("[^a-zA-Z0-9_]"), "_").lowercase(Locale.getDefault()), valuesXml.children
         )
         return ""
     }
 
     private fun addNameAttribute(name: String, elements: List<Element>): String {
-        if (elements.firstOrNull { it.getAttributeValue("name") == name } == null) {
+        if(elements.firstOrNull { it.getAttributeValue("name") == name } == null) {
             return name
         } else {
             return addNameAttribute(name + "_other", elements)
@@ -155,7 +151,7 @@ object ParseUtils {
 
         // 遍历所有文件和文件夹
         for (file in files) {
-            if (file.isDirectory) {
+            if(file.isDirectory) {
                 // 如果是文件夹，将其添加到返回列表中，并递归获取其子文件夹
                 subdirectories.add(file)
                 subdirectories.addAll(listSubdirectories(file))
